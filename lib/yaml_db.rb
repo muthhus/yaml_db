@@ -59,13 +59,25 @@ module YamlDb
   class Load < SerializationHelper::Load
     def self.load_documents(io, truncate = true)
       YAML.load_documents(io) do |ydoc|
+        not_exists_tables = []
         ydoc.keys.each do |table_name|
           next if ydoc[table_name].nil?
           if ActiveRecord::Base.connection.table_exists?(table_name)
             load_table(table_name, ydoc[table_name], truncate)
           else
-            puts "Table: #{table_name} is not exists."
+            not_exists_tables << table_name
           end
+        end
+        if not_exists_tables.any?
+          red_color = "\e[31m"
+          default_color = "\e[0m"
+          #CLEAR   = "\e[0m"
+          #BOLD    = "\e[1m"
+          #RED     = "\e[31m"
+          #GREEN   = "\e[32m"
+          #YELLOW  = "\e[33m"
+          #BLUE    = "\e[34m"
+          puts "#{red_color}Synch data field because tables: #{not_exists_tables.join(",")} are not exists #{default_color}"
         end
       end
     end

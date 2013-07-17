@@ -52,6 +52,9 @@ module SerializationHelper
   end
 
   class Load
+    GREEN   = "\e[32m"
+    CLEAR   = "\e[0m"
+
     def self.load(io, truncate = true)
       ActiveRecord::Base.connection.transaction do
         load_documents(io, truncate)
@@ -82,7 +85,7 @@ module SerializationHelper
       columns = column_names.map{|cn| ActiveRecord::Base.connection.columns(table).detect{|c| c.name == cn}}
       quoted_column_names = column_names.map { |column| ActiveRecord::Base.connection.quote_column_name(column) }.join(',')
       quoted_table_name = SerializationHelper::Utils.quote_table(table)
-      puts "Synch #{table}'s data......"
+      puts "#{GREEN}Synch #{table}'s data......#{CLEAR}"
       records.each do |record|
         quoted_values = record.zip(columns).map{|c| ActiveRecord::Base.connection.quote(c.first, c.last)}.join(',')
 
