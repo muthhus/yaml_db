@@ -172,11 +172,16 @@ module SerializationHelper
     end
 
     def self.base_tables
-      sql = "select table_name from information_schema.tables where table_schema='irm_dev' and table_type='base table';"
+
+      sql = "select table_name from information_schema.tables where table_schema='#{database}' and table_type='base table';"
       base_tables = ActiveRecord::Base.connection.execute(sql, 'SCHEMA').collect do |field|
         field.first
       end
-      base_tables.reject { |table| ['schema_info', 'schema_migrations','irm_data_accesses_top_org_t'].include?(table) }
+      base_tables.reject { |table| ['schema_info', 'schema_migrations'].include?(table) }
+    end
+
+    def self.database
+      Rails.configuration.database_configuration[Rails.env]["database"]
     end
 
     def self.tables
