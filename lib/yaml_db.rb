@@ -40,9 +40,10 @@ module YamlDb
 
     def self.dump_table_records(io, table)
       table_record_header(io)
-
-      column_names = table_column_names(table)
-
+      column_names = {}
+      ActiveRecord::Base.connection.columns(table).each do |c|
+        column_names[c.name] = c.null
+      end
       each_table_page(table) do |records|
         rows = SerializationHelper::Utils.unhash_records(records, column_names)
         io.write(YamlDb::Utils.chunk_records(records))
@@ -57,19 +58,22 @@ module YamlDb
 
   class Load < SerializationHelper::Load
     def self.load_documents(io, truncate = true)
-        YAML.load_documents(io) do |ydoc|
-          ydoc.keys.each do |table_name|
-            next if ydoc[table_name].nil?
+      YAML.load_documents(io) do |ydoc|
+        ydoc.keys.each do |table_name|
+          next if ydoc[table_name].nil?
+          if ActiveRecord::Base.connection.table_exists?(table_name)
             load_table(table_name, ydoc[table_name], truncate)
+          else
+            puts "Table: #{table_name} is not exists."
           end
         end
+      end
     end
   end
 
   class Railtie < Rails::Railtie
     rake_tasks do
-      load File.expand_path('../tasks/yaml_db_tasks.rake',
-__FILE__)
+      load File.expand_path('../tasks/ironmine_yaml_db_tasks.rake', __FILE__)
     end
   end
 

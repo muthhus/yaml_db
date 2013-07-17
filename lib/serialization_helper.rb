@@ -22,7 +22,7 @@ module SerializationHelper
         io = File.new "#{dirname}/#{table}.#{@extension}", "w"
         @dumper.before_table(io, table)
         @dumper.dump_table io, table
-        @dumper.after_table(io, table)         
+        @dumper.after_table(io, table)
       end
     end
 
@@ -38,7 +38,7 @@ module SerializationHelper
           next
         end
         @loader.load(File.new("#{dirname}/#{filename}", "r"), truncate)
-      end   
+      end
     end
 
     def disable_logger
@@ -50,7 +50,7 @@ module SerializationHelper
       ActiveRecord::Base.logger = @@old_logger
     end
   end
-  
+
   class Load
     def self.load(io, truncate = true)
       ActiveRecord::Base.connection.transaction do
@@ -60,9 +60,9 @@ module SerializationHelper
 
     def self.truncate_table(table)
       begin
-        ActiveRecord::Base.connection.execute("TRUNCATE #{SerializationHelper::Utils.quote_table(table)}")
-      rescue Exception
         ActiveRecord::Base.connection.execute("DELETE FROM #{SerializationHelper::Utils.quote_table(table)}")
+      rescue Exception
+        ActiveRecord::Base.connection.execute("TRUNCATE #{SerializationHelper::Utils.quote_table(table)}")
       end
     end
 
@@ -82,8 +82,10 @@ module SerializationHelper
       columns = column_names.map{|cn| ActiveRecord::Base.connection.columns(table).detect{|c| c.name == cn}}
       quoted_column_names = column_names.map { |column| ActiveRecord::Base.connection.quote_column_name(column) }.join(',')
       quoted_table_name = SerializationHelper::Utils.quote_table(table)
+      puts "Synch #{table}'s data......"
       records.each do |record|
         quoted_values = record.zip(columns).map{|c| ActiveRecord::Base.connection.quote(c.first, c.last)}.join(',')
+
         ActiveRecord::Base.connection.execute("INSERT INTO #{quoted_table_name} (#{quoted_column_names}) VALUES (#{quoted_values})")
       end
     end
@@ -92,15 +94,24 @@ module SerializationHelper
       if ActiveRecord::Base.connection.respond_to?(:reset_pk_sequence!)
         ActiveRecord::Base.connection.reset_pk_sequence!(table_name)
       end
-    end    
+    end
 
-      
+
   end
 
   module Utils
 
     def self.unhash(hash, keys)
-      keys.map { |key| hash[key] }
+      column_hash = keys.dup
+      keys = column_hash.keys
+
+      keys.map { |key|
+        if hash[key].blank? && !column_hash[key]
+          '0'
+        else
+          hash[key]
+        end
+      }
     end
 
     def self.unhash_records(records, keys)
@@ -146,7 +157,7 @@ module SerializationHelper
     end
 
     def self.dump(io)
-      tables.each do |table|
+      base_tables.each do |table|
         before_table(io, table)
         dump_table(io, table)
         after_table(io, table)
@@ -155,6 +166,14 @@ module SerializationHelper
 
     def self.after_table(io, table)
 
+    end
+
+    def self.base_tables
+      sql = "select table_name from information_schema.tables where table_schema='irm_dev' and table_type='base table';"
+      base_tables = ActiveRecord::Base.connection.execute(sql, 'SCHEMA').collect do |field|
+        field.first
+      end
+      base_tables.reject { |table| ['schema_info', 'schema_migrations','irm_data_accesses_top_org_t'].include?(table) }
     end
 
     def self.tables
