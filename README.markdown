@@ -12,7 +12,7 @@ Any database that has an ActiveRecord adapter should work.  This gem is now Rail
 
 Simply add to your Gemfile:
 
-    gem 'yaml_db'
+    gem 'irm_yaml_db', :require => 'yaml_db'
 
 All rake tasks will then be available to you.
 
